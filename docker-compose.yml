@@ -1,0 +1,30 @@
+services:
+  postgres:
+    container_name: nestjs-postgres
+    image: postgres:latest
+    ports:
+      - '5432:5432'
+    volumes:
+      - /Users/muhammadabdullah/Data/postgres:/data/postgres
+    env_file:
+      - docker.env
+    networks:
+      - postgres
+
+  pgadmin:
+    links:
+      - postgres:postgres
+    container_name: nestjs-pgadmin
+    image: dpage/pgadmin4
+    ports:
+      - '8080:80'
+    volumes:
+      - /Users/muhammadabdullah/Data/pgadmin:/root/.pgadmin
+    env_file:
+      - docker.env
+    networks:
+      - postgres
+
+networks:
+  postgres:
+    driver: bridge
