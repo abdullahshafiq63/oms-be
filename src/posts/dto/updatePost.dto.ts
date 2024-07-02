@@ -1,5 +1,14 @@
-export default class UpdatePostDto {
+import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
+
+export class UpdatePostDto {
+  @IsNumber()
   id: number;
-  content: string;
+
+  @IsString()
+  @IsNotEmpty()
   title: string;
+
+  @IsString()
+  @IsNotEmpty()
+  content: string;
 }

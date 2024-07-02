@@ -1,17 +1,16 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import CreatePostDto from './dto/createPost.dto';
-import Post from './post.interface';
-import UpdatePostDto from './dto/updatePost.dto';
+import { Injectable } from '@nestjs/common';
+import { CreatePostDto } from './dto/createPost.dto';
+import { UpdatePostDto } from './dto/updatePost.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PrismaError } from '../utils/prismaError';
+import { PostNotFoundException } from './exceptions/postNotFound.exception';
 
 @Injectable()
 export default class PostsService {
-  private lastPostId = 0;
-  private posts: Post[] = [];
-
   constructor(private readonly prismaService: PrismaService) {}
 
-  async getAllPosts() {
+  async getPosts() {
     return this.prismaService.post.findMany();
   }
 
@@ -22,35 +21,54 @@ export default class PostsService {
       },
     });
     if (!post) {
-      // throw new PostNotFoundException(id);
+      throw new PostNotFoundException(id);
     }
     return post;
   }
 
-  replacePost(id: number, post: UpdatePostDto) {
-    const postIndex = this.posts.findIndex((post) => post.id === id);
-    if (postIndex > -1) {
-      this.posts[postIndex] = post;
-      return post;
+  async createPost(post: CreatePostDto) {
+    return this.prismaService.post.create({
+      data: post,
+    });
+  }
+
+  async updatePost(id: number, post: UpdatePostDto) {
+    try {
+      return await this.prismaService.post.update({
+        data: {
+          ...post,
+          id: undefined,
+        },
+        where: {
+          id,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === PrismaError.RecordDoesNotExist
+      ) {
+        throw new PostNotFoundException(id);
+      }
+      throw error;
     }
-    throw new HttpException('Post not found', HttpStatus.NOT_FOUND);
   }
 
-  createPost(post: CreatePostDto) {
-    const newPost = {
-      id: ++this.lastPostId,
-      ...post,
-    };
-    this.posts.push(newPost);
-    return newPost;
-  }
-
-  deletePost(id: number) {
-    const postIndex = this.posts.findIndex((post) => post.id === id);
-    if (postIndex > -1) {
-      this.posts.splice(postIndex, 1);
-    } else {
-      throw new HttpException('Post not found', HttpStatus.NOT_FOUND);
+  async deletePost(id: number) {
+    try {
+      return this.prismaService.post.delete({
+        where: {
+          id,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === PrismaError.RecordDoesNotExist
+      ) {
+        throw new PostNotFoundException(id);
+      }
+      throw error;
     }
   }
 }
